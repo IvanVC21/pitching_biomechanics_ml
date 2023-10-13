@@ -27,6 +27,7 @@ def train_and_evaluate_xgboost(df, model_save_path='xgboost_model.pkl',
         x = df.iloc[:, 1:]
         y = df['pitch_speed_mph']
 
+        # Split is made by 70% for training set, 20% for validation set and 10% for test set
         x_train, x_temp, y_train, y_temp = train_test_split(x, y, test_size=0.3, random_state=42)
         x_val, x_test, y_val, y_test = train_test_split(x_temp, y_temp, test_size=1/3, random_state=42)
 
@@ -35,6 +36,7 @@ def train_and_evaluate_xgboost(df, model_save_path='xgboost_model.pkl',
         x_val = scaler.transform(x_val)
         x_test = scaler.transform(x_test)
 
+        # Hyperparameter Optimization
         def objective(trial):
             param = {
                 'objective': 'reg:squarederror',
@@ -59,6 +61,7 @@ def train_and_evaluate_xgboost(df, model_save_path='xgboost_model.pkl',
 
         print('Best hyperparameters:', study.best_params)
 
+        # Validation set and test set are merged so the final test set is 30% of whole dataset
         x_test = np.concatenate((x_val, x_test), axis=0)
         y_test = np.concatenate((y_val, y_test), axis=0)
 
@@ -97,7 +100,7 @@ def train_and_evaluate_xgboost(df, model_save_path='xgboost_model.pkl',
         plt.grid(True)
 
 
-        
+        # Model and feature impotance plot saving
         script_directory = os.path.dirname(os.path.abspath(__file__))
         feature_importance_plot_path = os.path.join(script_directory, feature_importance_plot_path)
         plt.savefig(feature_importance_plot_path)
@@ -123,7 +126,7 @@ def train_and_evaluate_xgboost(df, model_save_path='xgboost_model.pkl',
 
     except Exception as e:
         logging.error(f"Error in XGBoost training and evaluation: {str(e)}")
-        
+
         raise
 
 

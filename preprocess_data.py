@@ -15,6 +15,7 @@ def preprocess_data(mech_csv, meta_csv):
         mech = pd.read_csv(mech_csv)
         meta = pd.read_csv(meta_csv)
 
+        # Height, mass and age are fetched from metadata csv
         df = mech.join(meta[['session_height_m', 'session_mass_kg', 'age_yrs']])
 
         new_columns = ['session_height_m', 'session_mass_kg', 'age_yrs']
