@@ -66,7 +66,6 @@ def train_and_evaluate_xgboost(df, model_save_path='xgboost_model.pkl',
         opt_xgb.fit(x_train, y_train)
         y_pred = opt_xgb.predict(x_test)
 
-        # Print R2 and RMSE on test data
         r2 = r2_score(y_test, y_pred)
         rmse = np.sqrt(mean_squared_error(y_test, y_pred))
 
@@ -87,23 +86,23 @@ def train_and_evaluate_xgboost(df, model_save_path='xgboost_model.pkl',
             'Importance': feature_importance
         }).sort_values(by='Importance', ascending=False)
 
-        # Plot the most important features
+        
         top_features_df = feature_importance_df.head(15).sort_values(by='Importance', ascending=True)
-        plt.figure(figsize=(12, 8))  # Increase the figure height to provide more space for labels
+        plt.figure(figsize=(12, 8))  
         plt.barh(top_features_df['Feature'], top_features_df['Importance'], color='dodgerblue')
         plt.xlabel('Feature Importance')
         plt.ylabel('Features')
         plt.title('Top 15 Important Features Based on PCA')
-        plt.tight_layout()  # Adjust layout for better spacing
+        plt.tight_layout()  
         plt.grid(True)
 
 
-        # Save the trained model using joblib
+        
         script_directory = os.path.dirname(os.path.abspath(__file__))
         feature_importance_plot_path = os.path.join(script_directory, feature_importance_plot_path)
         plt.savefig(feature_importance_plot_path)
 
-        # Save the trained model using pickle
+        
         with open(model_save_path, 'wb') as file:
             pickle.dump(opt_xgb, file)
 
@@ -112,23 +111,19 @@ def train_and_evaluate_xgboost(df, model_save_path='xgboost_model.pkl',
         df['Actual_Speed'] = np.concatenate((y_train, y_test))
         df['Error'] = np.abs(df['Prediction'] - df['Actual_Speed'])
 
-        # Reorder columns
+        
         df = df[['Prediction', 'Actual_Speed', 'Error'] + df.columns.tolist()[1:]]
-
-        # Remove the final three columns
         df = df.iloc[:, :-3]
 
-        # Save the dataset without the final three columns as a CSV named 'predictions.csv' in the same directory
+        
         predictions_save_path = os.path.join(script_directory, 'predictions.csv')
         df.to_csv(predictions_save_path, index=False)
 
         return opt_xgb, df
 
     except Exception as e:
-        # Log the error
         logging.error(f"Error in XGBoost training and evaluation: {str(e)}")
-
-        # Raise the error to be caught by the calling code
+        
         raise
 
 
