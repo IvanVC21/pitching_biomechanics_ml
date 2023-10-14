@@ -5,3 +5,5 @@ scikit-learn==1.2.2
 seaborn==0.12.2
 statsmodels==0.14.0
 xgboost==1.7.5
+-e preprocessing
+-e training

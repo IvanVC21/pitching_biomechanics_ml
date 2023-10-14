@@ -1,9 +1,9 @@
-from preprocess_data import DataPreprocessor
-from train_and_evaluate import XGBoostTrainer
+from preprocessing import DataPreprocessor
+from training import XGBoostTrainer
 
 if __name__ == "__main__":
-    mech_csv = 'poi_metrics.csv'
-    meta_csv = 'metadata.csv'
+    mech_csv = 'data/poi_metrics.csv'
+    meta_csv = 'data/metadata.csv'
 
     # Preprocess data
     preprocessor = DataPreprocessor(mech_csv, meta_csv)

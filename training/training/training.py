@@ -61,7 +61,7 @@ class XGBoostTrainer:
         study = optuna.create_study(direction='minimize', study_name='XGBoost Regression Optimization', sampler=TPESampler(n_startup_trials=200))
         study.optimize(objective, n_trials=2000)
 
-        self.logger.info('Best hyperparameters: %s', study.best_params)
+        print('Best hyperparameters: %s', study.best_params)
         return study.best_params
 
     def merge_validation_and_test_sets(self, x_val, y_val, x_test, y_test):
@@ -105,12 +105,18 @@ class XGBoostTrainer:
         plt.grid(True)
 
         script_directory = os.path.dirname(os.path.abspath(__file__))
-        feature_importance_plot_path = os.path.join(script_directory, 'feature_importance.png')
+        results_directory = os.path.join(script_directory, 'results')
+        os.makedirs(results_directory, exist_ok=True)
+
+        feature_importance_plot_path = os.path.join(results_directory, 'feature_importance.png')
         plt.savefig(feature_importance_plot_path)
 
     def save_model_and_predictions(self, model, y_pred, x_train, y_train, x_test, y_test):
         script_directory = os.path.dirname(os.path.abspath(__file__))
-        model_save_path = os.path.join(script_directory, 'xgboost_model.pkl')
+        results_directory = os.path.join(script_directory, 'results')
+        os.makedirs(results_directory, exist_ok=True)
+
+        model_save_path = os.path.join(results_directory, 'pitching_speed_prediction_model.pkl')
         with open(model_save_path, 'wb') as file:
             pickle.dump(model, file)
 
@@ -122,7 +128,8 @@ class XGBoostTrainer:
         self.df['Error'] = np.abs(self.df['Prediction'] - self.df['Actual_Speed'])
 
         self.df = self.df[['Prediction', 'Actual_Speed', 'Error'] + self.df.columns.tolist()[1:-3]]
-        predictions_save_path = os.path.join(script_directory, 'predictions.csv')
+
+        predictions_save_path = os.path.join(results_directory, 'predictions.csv')
         self.df.to_csv(predictions_save_path, index=False)
 
     def train_and_evaluate(self):
