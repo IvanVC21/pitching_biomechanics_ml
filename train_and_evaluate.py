@@ -9,25 +9,25 @@ from sklearn.metrics import mean_squared_error, r2_score
 import optuna
 from optuna.samplers import TPESampler
 import matplotlib.pyplot as plt
-from preprocess_data import preprocess_data
 import os
 import pickle
 import logging
 
-def train_and_evaluate_xgboost(df, model_save_path='xgboost_model.pkl',
-                                predictions_save_path='predictions.csv', 
-                                feature_importance_plot_path='feature_importance.png'):
-    
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
-    logging.getLogger().addHandler(console_handler)
+class XGBoostTrainer:
+    def __init__(self, df):
+        self.df = df
+        self.logger = logging.getLogger(__name__)
+        self._logger_setup()
 
-    try:
-        x = df.iloc[:, 1:]
-        y = df['pitch_speed_mph']
+    def _logger_setup(self):
+        if not self.logger.handlers:
+            logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-        # Split is made by 70% for training set, 20% for validation set and 10% for test set
+
+    def split_data(self):
+        x = self.df.iloc[:, 1:]
+        y = self.df['pitch_speed_mph']
+
         x_train, x_temp, y_train, y_temp = train_test_split(x, y, test_size=0.3, random_state=42)
         x_val, x_test, y_val, y_test = train_test_split(x_temp, y_temp, test_size=1/3, random_state=42)
 
@@ -36,7 +36,9 @@ def train_and_evaluate_xgboost(df, model_save_path='xgboost_model.pkl',
         x_val = scaler.transform(x_val)
         x_test = scaler.transform(x_test)
 
-        # Hyperparameter Optimization
+        return x_train, x_val, x_test, y_train, y_val, y_test
+
+    def optimize_hyperparameters(self, x_train, y_train, x_val, y_val):
         def objective(trial):
             param = {
                 'objective': 'reg:squarederror',
@@ -59,24 +61,28 @@ def train_and_evaluate_xgboost(df, model_save_path='xgboost_model.pkl',
         study = optuna.create_study(direction='minimize', study_name='XGBoost Regression Optimization', sampler=TPESampler(n_startup_trials=200))
         study.optimize(objective, n_trials=2000)
 
-        print('Best hyperparameters:', study.best_params)
+        self.logger.info('Best hyperparameters: %s', study.best_params)
+        return study.best_params
 
-        # Validation set and test set are merged so the final test set is 30% of whole dataset
+    def merge_validation_and_test_sets(self, x_val, y_val, x_test, y_test):
         x_test = np.concatenate((x_val, x_test), axis=0)
         y_test = np.concatenate((y_val, y_test), axis=0)
+        return x_test, y_test
 
-        opt_xgb = xgboost.XGBRegressor(**study.best_params)
+    def train_and_evaluate_xgboost(self, x_train, y_train, x_test, y_test):
+        opt_xgb = xgboost.XGBRegressor(**self.optimize_hyperparameters(x_train, y_train, x_test, y_test))
         opt_xgb.fit(x_train, y_train)
         y_pred = opt_xgb.predict(x_test)
 
         r2 = r2_score(y_test, y_pred)
         rmse = np.sqrt(mean_squared_error(y_test, y_pred))
 
-        print('Optimized XGBoost Regressor RMSE on Test Data:', rmse)
-        print('Optimized XGBoost Regressor R2 on Test Data:', r2)
-        
+        print('Optimized XGBoost Regressor R2 on Test Data: %.2f' % round(r2, 2))
+        print('Optimized XGBoost Regressor RMSE on Test Data: %.2f' % round(rmse, 2))
 
-        # Feature importance based on PCA
+        return opt_xgb, y_pred
+
+    def plot_feature_importance(self, x_train, x_test):
         pca = PCA()
         X_train_pca = pca.fit_transform(x_train)
         X_test_pca = pca.transform(x_test)
@@ -85,49 +91,57 @@ def train_and_evaluate_xgboost(df, model_save_path='xgboost_model.pkl',
         feature_importance = np.sum(pca_components, axis=0)
 
         feature_importance_df = pd.DataFrame({
-            'Feature': df.columns[1:],
+            'Feature': self.df.columns[1:],
             'Importance': feature_importance
         }).sort_values(by='Importance', ascending=False)
 
-        
         top_features_df = feature_importance_df.head(15).sort_values(by='Importance', ascending=True)
-        plt.figure(figsize=(12, 8))  
+        plt.figure(figsize=(12, 8))
         plt.barh(top_features_df['Feature'], top_features_df['Importance'], color='dodgerblue')
         plt.xlabel('Feature Importance')
         plt.ylabel('Features')
         plt.title('Top 15 Important Features Based on PCA')
-        plt.tight_layout()  
+        plt.tight_layout()
         plt.grid(True)
 
-
-        # Model and feature impotance plot saving
         script_directory = os.path.dirname(os.path.abspath(__file__))
-        feature_importance_plot_path = os.path.join(script_directory, feature_importance_plot_path)
+        feature_importance_plot_path = os.path.join(script_directory, 'feature_importance.png')
         plt.savefig(feature_importance_plot_path)
 
-        
+    def save_model_and_predictions(self, model, y_pred, x_train, y_train, x_test, y_test):
+        script_directory = os.path.dirname(os.path.abspath(__file__))
+        model_save_path = os.path.join(script_directory, 'xgboost_model.pkl')
         with open(model_save_path, 'wb') as file:
-            pickle.dump(opt_xgb, file)
+            pickle.dump(model, file)
 
-        # Add prediction, actual speed, and error columns to the dataset
-        df['Prediction'] = np.concatenate((opt_xgb.predict(x_train), y_pred))
-        df['Actual_Speed'] = np.concatenate((y_train, y_test))
-        df['Error'] = np.abs(df['Prediction'] - df['Actual_Speed'])
+        train_predictions = model.predict(x_train)
+        test_predictions = y_pred
 
-        
-        df = df[['Prediction', 'Actual_Speed', 'Error'] + df.columns.tolist()[1:]]
-        df = df.iloc[:, :-3]
+        self.df['Prediction'] = np.concatenate((train_predictions, test_predictions))
+        self.df['Actual_Speed'] = np.concatenate((y_train, y_test))
+        self.df['Error'] = np.abs(self.df['Prediction'] - self.df['Actual_Speed'])
 
-        
+        self.df = self.df[['Prediction', 'Actual_Speed', 'Error'] + self.df.columns.tolist()[1:-3]]
         predictions_save_path = os.path.join(script_directory, 'predictions.csv')
-        df.to_csv(predictions_save_path, index=False)
+        self.df.to_csv(predictions_save_path, index=False)
 
-        return opt_xgb, df
+    def train_and_evaluate(self):
+        try:
+            x_train, x_val, x_test, y_train, y_val, y_test = self.split_data()
+            x_test, y_test = self.merge_validation_and_test_sets(x_val, y_val, x_test, y_test)
+            opt_xgb, y_pred = self.train_and_evaluate_xgboost(x_train, y_train, x_test, y_test)
+            self.plot_feature_importance(x_train, x_test)
+            self.save_model_and_predictions(opt_xgb, y_pred, x_train, y_train, x_test, y_test)
 
-    except Exception as e:
-        logging.error(f"Error in XGBoost training and evaluation: {str(e)}")
+            return opt_xgb, self.df
+        except Exception as e:
+            self.logger.error("Error in XGBoost training and evaluation: %s", str(e))
+            raise
 
-        raise
+
+
+
+
 
 
 
