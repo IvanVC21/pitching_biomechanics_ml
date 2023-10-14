@@ -3,7 +3,7 @@
 ## Introduction
 The [OpenBiomechanics Project](https://www.openbiomechanics.org/) is an amazing initiative by [Driveline Baseball](https://www.drivelinebaseball.com/) Research and Development, as they want to democratize access to elite-level motion capture data. In this case, they offer a sample of a larger dataset they have.
 Specifically, in this project I framed it as a regression project to predict pitching velocity using more than 70 biomechanical markers. If your passion is baseball or biomechanics or Machine Learning, I highly encourage you to work with this data.
-My best results on Test set were 1.15 RMSE and 0.93 R2 score.
+My best results on Test set were 1.15-1.19 RMSE and 0.92-0.93 R2 score.
 
 ## Instructions to run my code
 1-. Download the repo to your local machine.
