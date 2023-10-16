@@ -126,7 +126,7 @@ class XGBoostTrainer:
 
     def save_model_and_predictions(self, model, y_pred, x_train, y_train, x_test, y_test, df):
         """
-        Save the trained model and predictions.
+        Save the trained model and predictions for the test set.
 
         """
         results_directory = os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', '..', 'results')
@@ -136,17 +136,19 @@ class XGBoostTrainer:
         with open(model_save_path, 'wb') as file:
             pickle.dump(model, file)
 
-        train_predictions = model.predict(x_train)
-        test_predictions = y_pred
+        test_predictions = np.round(y_pred, 2)
+        test_indices = range(len(y_train), len(y_train) + len(y_test))
 
-        df['prediction'] = np.round(np.concatenate((train_predictions, test_predictions)), 2)
-        df['actual_speed'] = np.concatenate((y_train, y_test))
-        df['error'] = np.round(np.abs(df['prediction'] - df['actual_speed']), 2)
+        test_df = pd.DataFrame({
+            'prediction': np.round(test_predictions, 2),
+            'actual_speed': np.round(y_test, 2),
+            'error': np.round(np.abs(test_predictions - y_test), 2)
+        })
 
-        # Update the DataFrame in place without reassignment
-        df = df[['prediction', 'actual_speed', 'error'] + df.columns.tolist()[1:-3]]
+        test_df[df.columns[1:]] = df.iloc[test_indices, 1:].reset_index(drop=True)
 
-        df.to_csv(os.path.join(results_directory, 'predictions.csv'), index=False)
+        test_df.to_csv(os.path.join(results_directory, 'predictions.csv'), index=False)
+
 
 
 class FeatureImportancePlotter:

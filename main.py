@@ -15,7 +15,7 @@ if __name__ == "__main__":
     x_train, x_val, x_test, y_train, y_val, y_test = data_handler.split_data()
     x_test, y_test = data_handler.merge_validation_and_test_sets(x_val, y_val, x_test, y_test)
 
-    # Optimize hyperparameters with configurability
+    # Optimize hyperparameters 
     hyperparameter_optimizer = HyperparameterOptimizer(n_startup_trials=200, n_trials=2000)
     best_params = hyperparameter_optimizer.optimize_hyperparameters(x_train, y_train, x_val, y_val)
 
