@@ -4,6 +4,13 @@ import logging
 
 class DataPreprocessor:
     def __init__(self, mech_csv, meta_csv):
+        """
+        Initialize the DataPreprocessor.
+
+        Parameters:
+        - mech_csv (str): Path to the mechanical data CSV file.
+        - meta_csv (str): Path to the metadata CSV file.
+        """
         self.mech_csv = mech_csv
         self.meta_csv = meta_csv
 
